@@ -18,7 +18,7 @@ def get_deconv_bias(name, output_depth):
 # 使用relu激活函数
 def deconv_layer(name, input, kernel_size, output_depth):
     input_shape = input.get_shape().as_list()
-    output_shape = [input_shape[0], input_shape[1]+2, input_shape[2]+2, output_depth]
+    output_shape = [input_shape[0], input_shape[1]+kernel_size-1, input_shape[2]+kernel_size-1, output_depth]
     input_depth = input_shape[3]
 
     with tf.variable_scope(name):
@@ -41,3 +41,8 @@ deconv_layer_2_output = deconv_layer(name='deconv_layer_2', input=deconv_layer_1
 
 # shape (28, 28, 1)
 y_output = deconv_layer_2_output
+
+# 变量初始化
+init = tf.global_variables_initializer()
+with tf.Session() as sess:
+    sess.run(init)
