@@ -1,5 +1,4 @@
 import tensorflow as tf
-import numpy as np
 
 # 常量定义
 BATCH_SIZE = 10

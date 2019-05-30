@@ -1,8 +1,12 @@
 import tensorflow as tf
-import numpy as np
 
 # 常量定义
 BATCH_SIZE = 10
+
+
+def tensorboard_write():
+    write = tf.summary.FileWriter('tensorboard/', tf.get_default_graph())
+    write.close()
 
 
 def get_deconv_kernel(name, input_depth, kernel_size, output_depth):
@@ -31,13 +35,16 @@ def deconv_layer(name, input, kernel_size, output_depth):
 
 # 定义网络结构
 # shape (7, 7, 4)
-x_input = tf.placeholder(dtype=tf.float32, shape=(BATCH_SIZE, 7, 7, 4), name='x_input')
+with tf.name_scope('layer_1'):
+    x_input = tf.placeholder(dtype=tf.float32, shape=(BATCH_SIZE, 7, 7, 4), name='x_input')
 
 # shape (14, 14, 2)
-deconv_layer_1_output = deconv_layer(name='deconv_layer_1', input=x_input, kernel_size=8, output_depth=2)
+with tf.name_scope('layer_2'):
+    deconv_layer_1_output = deconv_layer(name='deconv_layer_1', input=x_input, kernel_size=8, output_depth=2)
 
 # shape (28, 28, 1)
-deconv_layer_2_output = deconv_layer(name='deconv_layer_2', input=deconv_layer_1_output, kernel_size=15, output_depth=1)
+with tf.name_scope('layer_3'):
+    deconv_layer_2_output = deconv_layer(name='deconv_layer_2', input=deconv_layer_1_output, kernel_size=15, output_depth=1)
 
 # shape (28, 28, 1)
 y_output = deconv_layer_2_output
@@ -45,4 +52,4 @@ y_output = deconv_layer_2_output
 # 变量初始化
 init = tf.global_variables_initializer()
 with tf.Session() as sess:
-    sess.run(init)
+    sess.run(init, tensorboard_write())
