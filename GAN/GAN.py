@@ -1,21 +1,22 @@
+import numpy as np
 import tensorflow as tf
 from tensorflow.examples.tutorials.mnist import input_data
 
 mnist = input_data.read_data_sets('dataset/', one_hot=True)
 
 # 常量定义
-BATCH_SIZE = 10
-TRAIN_STEP = 100
-LEARNING_RATE = 0.001
+BATCH_SIZE = 128
+TRAIN_STEP = 500
+LEARNING_RATE = 0.01
 
 
 def get_discriminator_batch(batch_size):
     x_batch, _ = mnist.train.next_batch(batch_size)
-    return x_batch
+    return np.reshape(x_batch, [batch_size, 28, 28, 1])
 
 
 def get_generator_batch(batch_size):
-    return tf.random_normal(shape=[batch_size, 7, 7, 4])
+    return np.random.normal(size=[batch_size, 7, 7, 4]).astype(np.float32)
 
 
 def generator(x_input):
@@ -63,7 +64,7 @@ def discriminator(x_input):
         input_shape = input.get_shape().as_list()
         input_depth = input_shape[3]
 
-        with tf.variable_scope(name):
+        with tf.variable_scope(name, reuse=tf.AUTO_REUSE):
             kernel = get_conv_kernel('kernel', input_depth, kernel_size, output_depth)
             bias = get_conv_bias('bias', output_depth)
 
@@ -81,7 +82,7 @@ def discriminator(x_input):
     def full_connect_layer(name, input, nodes):
         input_shape = input.get_shape().as_list()
 
-        with tf.variable_scope(name):
+        with tf.variable_scope(name, reuse=tf.AUTO_REUSE):
             weight = tf.get_variable('weight', shape=[input_shape[1], nodes],
                                      initializer=tf.truncated_normal_initializer(mean=0, stddev=0.1))
             bias = tf.get_variable('bias', shape=[nodes], initializer=tf.zeros_initializer())
@@ -128,16 +129,24 @@ with tf.name_scope('train'):
     d_train = tf.train.AdamOptimizer(learning_rate=LEARNING_RATE).minimize(d_loss)
 
 with tf.name_scope('summary'):
+    tf.summary.image('generator_output', g_output, 10)
+    tf.summary.histogram('discriminator_output_real', d_output_real)
+    tf.summary.histogram('discriminator_output_fake', d_output_fake)
+    tf.summary.scalar('generator_loss', g_loss)
+    tf.summary.scalar('discriminator_loss_real', d_loss_real)
+    tf.summary.scalar('discriminator_loss_fake', d_loss_fake)
+    tf.summary.scalar('discriminator_loss', d_loss)
+
     merged = tf.summary.merge_all()
 
-    tf.summary.image('generator_output', g_output, 10)
-    tf.summary.scalar('discriminator_output_real', d_output_real)
-    tf.summary.scalar('discriminator_output_fake', d_output_fake)
-    tf.summary.scalar('generator_loss', g_loss)
-    tf.summary.scalar('discriminator_loss', d_loss)
+with tf.name_scope('global_step'):
+    global_step = tf.Variable(0, trainable=False)
 
 with tf.name_scope('init'):
     init = tf.global_variables_initializer()
+
+with tf.name_scope('save'):
+    saver = tf.train.Saver()
 
 with tf.Session() as sess:
     sess.run(init)
@@ -147,15 +156,21 @@ with tf.Session() as sess:
         g_batch = get_generator_batch(BATCH_SIZE)
         d_batch = get_discriminator_batch(BATCH_SIZE)
 
-        if i % 10 == 0:
-            print('generator_loss: ', sess.run(g_loss, feed_dict={g_input: g_batch, d_input: d_batch}))
-
         # 训练
-        sess.run(d_train, feed_dict={g_input: g_batch, d_input: d_batch})
-        sess.run(g_train, feed_dict={g_input: g_batch})
+        dl, _ = sess.run([d_loss, d_train], feed_dict={g_input: g_batch, d_input: d_batch})
+        gl, _ = sess.run([g_loss, g_train], feed_dict={g_input: g_batch})
 
-        # summary
-        summary = sess.run(merged)
-        writer.add_summary(summary, merged, i)
+        
+
+        if i % 50 == 0:
+            print('After training %d round, generator_loss: %f' % (i, gl))
+
+        if i != 0 and i % 200 == 0:
+            saver.save(sess, '/Users/fan/Desktop/python/tensorflow/machine-learning-final-project/GAN/net_data/log.ckpt',
+                       global_step=global_step)
+
+        if i % 10 == 0:
+            summary = sess.run(merged, feed_dict={g_input: g_batch, d_input: d_batch})
+            writer.add_summary(summary, i)
 
     writer.close()
