@@ -1,13 +1,21 @@
 import tensorflow as tf
+from tensorflow.examples.tutorials.mnist import input_data
+
+mnist = input_data.read_data_sets('dataset/', one_hot=True)
 
 # 常量定义
 BATCH_SIZE = 10
+TRAIN_STEP = 100
 LEARNING_RATE = 0.001
 
 
-def tensorboard_write():
-    write = tf.summary.FileWriter('tensorboard/', tf.get_default_graph())
-    write.close()
+def get_discriminator_batch(batch_size):
+    x_batch, _ = mnist.train.next_batch(batch_size)
+    return x_batch
+
+
+def get_generator_batch(batch_size):
+    return tf.random_normal(shape=[batch_size, 7, 7, 4])
 
 
 def generator(x_input):
@@ -99,8 +107,8 @@ def discriminator(x_input):
 
 
 with tf.name_scope('input'):
-    g_input = tf.placeholder(dtype=tf.float32)
-    d_input = tf.placeholder(dtype=tf.float32)
+    g_input = tf.placeholder(dtype=tf.float32, shape=[BATCH_SIZE, 7, 7, 4])
+    d_input = tf.placeholder(dtype=tf.float32, shape=[BATCH_SIZE, 28, 28, 1])
 
 with tf.name_scope('output'):
     g_output = generator(g_input)
@@ -119,8 +127,35 @@ with tf.name_scope('train'):
     g_train = tf.train.AdamOptimizer(learning_rate=LEARNING_RATE).minimize(g_loss)
     d_train = tf.train.AdamOptimizer(learning_rate=LEARNING_RATE).minimize(d_loss)
 
+with tf.name_scope('summary'):
+    merged = tf.summary.merge_all()
+
+    tf.summary.image('generator_output', g_output, 10)
+    tf.summary.scalar('discriminator_output_real', d_output_real)
+    tf.summary.scalar('discriminator_output_fake', d_output_fake)
+    tf.summary.scalar('generator_loss', g_loss)
+    tf.summary.scalar('discriminator_loss', d_loss)
+
 with tf.name_scope('init'):
     init = tf.global_variables_initializer()
 
 with tf.Session() as sess:
     sess.run(init)
+    writer = tf.summary.FileWriter('tensorboard/train', sess.graph)
+
+    for i in range(TRAIN_STEP):
+        g_batch = get_generator_batch(BATCH_SIZE)
+        d_batch = get_discriminator_batch(BATCH_SIZE)
+
+        if i % 10 == 0:
+            print('generator_loss: ', sess.run(g_loss, feed_dict={g_input: g_batch, d_input: d_batch}))
+
+        # 训练
+        sess.run(d_train, feed_dict={g_input: g_batch, d_input: d_batch})
+        sess.run(g_train, feed_dict={g_input: g_batch})
+
+        # summary
+        summary = sess.run(merged)
+        writer.add_summary(summary, merged, i)
+
+    writer.close()
