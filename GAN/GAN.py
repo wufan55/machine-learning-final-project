@@ -7,7 +7,8 @@ mnist = input_data.read_data_sets('dataset/', one_hot=True)
 # 常量定义
 BATCH_SIZE = 128
 TRAIN_STEP = 500
-LEARNING_RATE = 0.01
+G_LEARNING_RATE = 0.01
+D_LEARNING_RATE = 0.01
 
 
 def get_discriminator_batch(batch_size):
@@ -88,7 +89,7 @@ def discriminator(x_input):
             bias = tf.get_variable('bias', shape=[nodes], initializer=tf.zeros_initializer())
 
         fc = tf.matmul(input, weight)
-        return tf.nn.relu(tf.nn.bias_add(fc, bias))
+        return tf.nn.sigmoid(tf.nn.bias_add(fc, bias))
 
     conv_layer_1_output = conv_layer(name='conv_layer_1', input=x_input, kernel_size=5, output_depth=2)
 
@@ -100,11 +101,9 @@ def discriminator(x_input):
 
     fc_input = tf.reshape(pool_layer_2_output, [BATCH_SIZE, 64])
 
-    fc_layer_1_output = full_connect_layer(name='fc_layer_1', input=fc_input, nodes=10)
+    fc_layer_1_output = full_connect_layer(name='fc_layer_1', input=fc_input, nodes=1)
 
-    fc_layer_2_output = full_connect_layer(name='fc_layer_2', input=fc_layer_1_output, nodes=1)
-
-    return fc_layer_2_output
+    return fc_layer_1_output
 
 
 with tf.name_scope('input'):
@@ -125,8 +124,8 @@ with tf.name_scope('d_loss'):
     d_loss = d_loss_fake + d_loss_real
 
 with tf.name_scope('train'):
-    g_train = tf.train.AdamOptimizer(learning_rate=LEARNING_RATE).minimize(g_loss)
-    d_train = tf.train.AdamOptimizer(learning_rate=LEARNING_RATE).minimize(d_loss)
+    g_train = tf.train.AdamOptimizer(learning_rate=G_LEARNING_RATE).minimize(g_loss)
+    d_train = tf.train.AdamOptimizer(learning_rate=D_LEARNING_RATE).minimize(d_loss)
 
 with tf.name_scope('summary'):
     tf.summary.image('generator_output', g_output, 10)
@@ -159,8 +158,6 @@ with tf.Session() as sess:
         # 训练
         dl, _ = sess.run([d_loss, d_train], feed_dict={g_input: g_batch, d_input: d_batch})
         gl, _ = sess.run([g_loss, g_train], feed_dict={g_input: g_batch})
-
-        
 
         if i % 50 == 0:
             print('After training %d round, generator_loss: %f' % (i, gl))
