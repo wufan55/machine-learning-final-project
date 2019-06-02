@@ -80,8 +80,6 @@ with tf.name_scope('train'):
 
 with tf.name_scope('summary'):
     tf.summary.image('generator_output', g_output, 10)
-    # tf.summary.histogram('discriminator_output_real', d_output_real)
-    # tf.summary.histogram('discriminator_output_fake', d_output_fake)
     tf.summary.scalar('d_output_fake', tf.reduce_mean(d_output_fake))
     tf.summary.scalar('generator_loss', g_loss)
     tf.summary.scalar('discriminator_loss', d_loss)
