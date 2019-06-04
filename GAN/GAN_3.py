@@ -6,7 +6,7 @@ mnist = input_data.read_data_sets('dataset/', one_hot=True)
 
 # 常量定义
 BATCH_SIZE = 64
-TRAIN_STEP = 10001
+TRAIN_STEP = 2001
 G_LEARNING_RATE = 0.001
 D_LEARNING_RATE = 0.001
 
@@ -17,10 +17,23 @@ def get_discriminator_batch(batch_size):
 
 
 def get_generator_batch(batch_size):
-    return np.random.uniform(-1, 1, size=[batch_size, 7, 7, 4]).astype(np.float32)
+    return np.random.uniform(-1, 1, size=[batch_size, 100]).astype(np.float32)
 
 
 def generator(x_input):
+    # 全连接层
+    # 使用relu激活函数
+    def full_connect_layer(name, input, nodes):
+        input_shape = input.get_shape().as_list()
+
+        with tf.variable_scope(name, reuse=False):
+            weight = tf.get_variable('weight', shape=[input_shape[1], nodes],
+                                     initializer=tf.truncated_normal_initializer(mean=0, stddev=0.1))
+            bias = tf.get_variable('bias', shape=[nodes], initializer=tf.zeros_initializer())
+
+        fc = tf.matmul(input, weight)
+        return tf.nn.relu(tf.nn.bias_add(fc, bias))
+
     # 使用relu激活函数
     def deconv_layer(name, input, kernel_size, output_depth):
         def get_deconv_kernel(name, input_depth, kernel_size, output_depth):
@@ -33,18 +46,25 @@ def generator(x_input):
                         output_depth]
         input_depth = input_shape[3]
 
-        with tf.variable_scope(name):
+        with tf.variable_scope(name, reuse=False):
             kernel = get_deconv_kernel('kernel', input_depth, kernel_size, output_depth)
 
         return tf.nn.conv2d_transpose(input, kernel, output_shape=output_shape, strides=[1, 1, 1, 1], padding='VALID')
 
-    with tf.variable_scope('generator', reuse=tf.AUTO_REUSE):
+    with tf.variable_scope('generator', reuse=False):
         # 定义generator结构
-        deconv_layer_1_output = tf.nn.relu(tf.layers.batch_normalization(deconv_layer('deconv_layer_1', x_input, 8, 2), training=True))
+        fc_layer_1_output = tf.reshape(full_connect_layer('fc_layer_1', x_input, 1024), [BATCH_SIZE, 16, 16, 4])
 
-        deconv_layer_2_output = tf.nn.tanh(tf.layers.batch_normalization(deconv_layer('deconv_layer_2', deconv_layer_1_output, 15, 1), training=True))
+        deconv_layer_1_output = tf.nn.relu(
+            tf.layers.batch_normalization(deconv_layer('deconv_layer_1', fc_layer_1_output, 5, 4), training=True))
+        #
+        deconv_layer_2_output = tf.nn.relu(
+            tf.layers.batch_normalization(deconv_layer('deconv_layer_2', deconv_layer_1_output, 5, 2), training=True))
 
-    return deconv_layer_2_output
+        deconv_layer_3_output = tf.nn.tanh(
+            tf.layers.batch_normalization(deconv_layer('deconv_layer_3', deconv_layer_2_output, 5, 1), training=True))
+
+    return deconv_layer_3_output
 
 
 def discriminator(x_input):
@@ -58,7 +78,7 @@ def discriminator(x_input):
         input_shape = input.get_shape().as_list()
         input_depth = input_shape[3]
 
-        with tf.variable_scope(name, reuse=tf.AUTO_REUSE):
+        with tf.variable_scope(name, reuse=False):
             kernel = get_conv_kernel('kernel', input_depth, kernel_size, output_depth)
 
         return tf.nn.conv2d(input, kernel, strides=[1, 1, 1, 1], padding='VALID')
@@ -74,7 +94,7 @@ def discriminator(x_input):
     def full_connect_layer(name, input, nodes):
         input_shape = input.get_shape().as_list()
 
-        with tf.variable_scope(name, reuse=tf.AUTO_REUSE):
+        with tf.variable_scope(name, reuse=False):
             weight = tf.get_variable('weight', shape=[input_shape[1], nodes],
                                      initializer=tf.truncated_normal_initializer(mean=0, stddev=0.1))
             bias = tf.get_variable('bias', shape=[nodes], initializer=tf.zeros_initializer())
@@ -82,14 +102,22 @@ def discriminator(x_input):
         fc = tf.matmul(input, weight)
         return tf.nn.sigmoid(tf.nn.bias_add(fc, bias))
 
-    with tf.variable_scope('discriminator', reuse=tf.AUTO_REUSE):
-        conv_layer_1_output = tf.nn.relu(tf.layers.batch_normalization(conv_layer('conv_layer_1', x_input, 5, 2), training=True))
+    with tf.variable_scope('discriminator', reuse=False):
+        conv_layer_1_output = tf.nn.relu(
+            tf.layers.batch_normalization(conv_layer('conv_layer_1', x_input, 3, 2), training=True))
 
-        pool_layer_1_output = pool_layer(name='pool_layer_1', input=conv_layer_1_output, kernel_size=2)
+        conv_layer_2_output = tf.nn.relu(
+            tf.layers.batch_normalization(conv_layer('conv_layer_2', conv_layer_1_output, 3, 2), training=True))
 
-        conv_layer_2_output = tf.nn.relu(tf.layers.batch_normalization(conv_layer('conv_layer_2', pool_layer_1_output, 5, 4), training=True))
+        pool_layer_1_output = pool_layer(name='pool_layer_1', input=conv_layer_2_output, kernel_size=2)
 
-        pool_layer_2_output = pool_layer(name='pool_layer_2', input=conv_layer_2_output, kernel_size=2)
+        conv_layer_3_output = tf.nn.relu(
+            tf.layers.batch_normalization(conv_layer('conv_layer_3', pool_layer_1_output, 3, 4), training=True))
+
+        conv_layer_4_output = tf.nn.relu(
+            tf.layers.batch_normalization(conv_layer('conv_layer_4', conv_layer_3_output, 3, 4), training=True))
+
+        pool_layer_2_output = pool_layer(name='pool_layer_2', input=conv_layer_4_output, kernel_size=2)
 
         fc_input = tf.reshape(pool_layer_2_output, [BATCH_SIZE, 64])
 
@@ -99,7 +127,7 @@ def discriminator(x_input):
 
 
 with tf.name_scope('input'):
-    g_input = tf.placeholder(dtype=tf.float32, shape=[BATCH_SIZE, 7, 7, 4])
+    g_input = tf.placeholder(dtype=tf.float32, shape=[BATCH_SIZE, 100])
     d_input = tf.placeholder(dtype=tf.float32, shape=[BATCH_SIZE, 28, 28, 1])
 
 with tf.name_scope('output'):
