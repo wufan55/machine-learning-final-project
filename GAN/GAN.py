@@ -123,7 +123,7 @@ with tf.name_scope('d_loss'):
     d_loss_fake = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=d_output_fake, labels=tf.zeros_like(d_output_fake)))
     d_loss = d_loss_fake + d_loss_real
 
-with tf.name_scope('train'):
+with tf.name_scope('GAN'):
     g_train = tf.train.AdamOptimizer(learning_rate=G_LEARNING_RATE).minimize(g_loss)
     d_train = tf.train.AdamOptimizer(learning_rate=D_LEARNING_RATE).minimize(d_loss)
 
@@ -149,7 +149,7 @@ with tf.name_scope('save'):
 
 with tf.Session() as sess:
     sess.run(init)
-    writer = tf.summary.FileWriter('tensorboard/train', sess.graph)
+    writer = tf.summary.FileWriter('tensorboard/GAN', sess.graph)
 
     for i in range(TRAIN_STEP):
         g_batch = get_generator_batch(BATCH_SIZE)

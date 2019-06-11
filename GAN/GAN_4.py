@@ -49,7 +49,7 @@ def generator(x_input):
 
         return tf.nn.conv2d_transpose(input, kernel, output_shape=output_shape, strides=[1, 1, 1, 1], padding='VALID')
 
-    with tf.name_scope('generator'):
+    with tf.variable_scope('generator', reuse=tf.AUTO_REUSE):
         # 定义generator结构
         g_fc_layer_1_output = tf.nn.relu(full_connect_layer('generator_fc_layer_1', x_input, 128))
 
@@ -93,7 +93,7 @@ def discriminator(x_input):
         fc = tf.matmul(input, weight)
         return tf.nn.sigmoid(tf.nn.bias_add(fc, bias))
 
-    with tf.name_scope('discriminator'):
+    with tf.variable_scope('discriminator', reuse=True):
         conv_layer_1_output = tf.nn.relu(
             tf.layers.batch_normalization(conv_layer('conv_layer_1', x_input, 5, 2), training=True))
 
@@ -128,7 +128,7 @@ with tf.name_scope('g_loss'):
 with tf.name_scope('d_loss'):
     d_loss = -tf.reduce_mean(tf.log(d_output_real) + tf.log(1. - d_output_fake))
 
-with tf.name_scope('train'):
+with tf.name_scope('GAN'):
     t_vars = tf.trainable_variables()
     # variable_names = [v.name for v in tf.trainable_variables()]
     # print(variable_names)
@@ -160,7 +160,7 @@ with tf.Session() as sess:
     else:
         sess.run(init)
 
-    writer = tf.summary.FileWriter('tensorboard/train', sess.graph)
+    writer = tf.summary.FileWriter('tensorboard/GAN', sess.graph)
 
     for i in range(TRAIN_STEP):
         g_batch = get_generator_batch(BATCH_SIZE)

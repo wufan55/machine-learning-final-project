@@ -12,6 +12,6 @@ from tensorflow.examples.tutorials.mnist import input_data
 
 mnist = input_data.read_data_sets("GAN/dataset/", one_hot=True)
 
-# print("Training data size: ", mnist.train.num_examples)
+# print("Training data size: ", mnist.GAN.num_examples)
 a = np.array(mnist.train.images[0])
 print(a)

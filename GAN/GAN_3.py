@@ -141,7 +141,7 @@ with tf.name_scope('g_loss'):
 with tf.name_scope('d_loss'):
     d_loss = -tf.reduce_mean(tf.log(d_output_real) + tf.log(1. - d_output_fake))
 
-with tf.name_scope('train'):
+with tf.name_scope('GAN'):
     t_vars = tf.trainable_variables()
     d_vars = [var for var in t_vars if var.name.startswith('discriminator')]
     g_vars = [var for var in t_vars if var.name.startswith('generator')]
@@ -171,7 +171,7 @@ with tf.Session() as sess:
     else:
         sess.run(init)
 
-    writer = tf.summary.FileWriter('tensorboard/train', sess.graph)
+    writer = tf.summary.FileWriter('tensorboard/GAN', sess.graph)
 
     for i in range(TRAIN_STEP):
         g_batch = get_generator_batch(BATCH_SIZE)

@@ -74,7 +74,7 @@ with tf.name_scope('g_loss'):
 with tf.name_scope('d_loss'):
     d_loss = -tf.reduce_mean(1.3*tf.log(d_output_real) + 0.7*tf.log(1. - d_output_fake))
 
-with tf.name_scope('train'):
+with tf.name_scope('GAN'):
     g_train = tf.train.AdamOptimizer(learning_rate=G_LEARNING_RATE).minimize(g_loss, var_list=slim.get_variables('generator'))
     d_train = tf.train.AdamOptimizer(learning_rate=D_LEARNING_RATE).minimize(d_loss, var_list=slim.get_variables('discriminator'))
 
@@ -98,7 +98,7 @@ with tf.Session() as sess:
     if ckpt and ckpt.model_checkpoint_path:
         saver.restore(sess, ckpt.model_checkpoint_path)
 
-    writer = tf.summary.FileWriter('tensorboard/train', sess.graph)
+    writer = tf.summary.FileWriter('tensorboard/GAN', sess.graph)
 
     for i in range(TRAIN_STEP):
         g_batch = get_generator_batch(BATCH_SIZE)

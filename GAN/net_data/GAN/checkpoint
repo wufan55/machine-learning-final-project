@@ -1,0 +1,2 @@
+model_checkpoint_path: "/Users/fan/Desktop/python/tensorflow/machine-learning-final-project/GAN/net_data/log.ckpt"
+all_model_checkpoint_paths: "/Users/fan/Desktop/python/tensorflow/machine-learning-final-project/GAN/net_data/log.ckpt"
