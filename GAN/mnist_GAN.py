@@ -2,10 +2,12 @@ import tensorflow as tf
 import numpy as np
 from tensorflow.examples.tutorials.mnist import input_data
 
+mnist = input_data.read_data_sets('dataset/', one_hot=True)
+
+# 常量定义
 BATCH_SIZE = 64
 TRAIN_STEP = 10001
-
-mnist = input_data.read_data_sets('dataset/', one_hot=True)
+LEARNING_RATE = 0.0001
 
 
 def get_discriminator_batch(batch_size):
@@ -52,12 +54,12 @@ def discriminator(input):
 
 
 with tf.name_scope('input'):
-    x = tf.placeholder(tf.float32, shape=[None, 784], name='x')
-    z = tf.placeholder(tf.float32, shape=[None, 100], name='z')
+    D_input = tf.placeholder(tf.float32, shape=[None, 784], name='x')
+    G_input = tf.placeholder(tf.float32, shape=[None, 100], name='z')
 
 with tf.name_scope('output'):
-    G_output = generator(z)
-    D_output_real = discriminator(x)
+    G_output = generator(G_input)
+    D_output_real = discriminator(D_input)
     D_output_fake = discriminator(G_output)
 
 with tf.name_scope('var'):
@@ -72,8 +74,8 @@ with tf.name_scope('loss'):
     G_loss = -tf.reduce_mean(tf.log(D_output_fake))
 
 with tf.name_scope('train'):
-    D_optimizer = tf.train.AdamOptimizer(0.0001).minimize(D_loss, var_list=d_vars)
-    G_optimizer = tf.train.AdamOptimizer(0.0001).minimize(G_loss, var_list=g_vars)
+    D_optimizer = tf.train.AdamOptimizer(LEARNING_RATE).minimize(D_loss, var_list=d_vars)
+    G_optimizer = tf.train.AdamOptimizer(LEARNING_RATE).minimize(G_loss, var_list=g_vars)
 
 with tf.name_scope('summary'):
     tf.summary.image('generator_output', tf.reshape(G_output, [BATCH_SIZE, 28, 28, 1]), 10)
@@ -105,8 +107,8 @@ with tf.Session() as sess:
         d_batch = get_discriminator_batch(BATCH_SIZE)
 
         # 训练
-        dl, _ = sess.run([D_loss, D_optimizer], feed_dict={z: g_batch, x: d_batch})
-        gl, _ = sess.run([G_loss, G_optimizer], feed_dict={z: g_batch})
+        dl, _ = sess.run([D_loss, D_optimizer], feed_dict={G_input: g_batch, D_input: d_batch})
+        gl, _ = sess.run([G_loss, G_optimizer], feed_dict={G_input: g_batch})
 
         if i % 50 == 0:
             print('After training %d round, generator_loss: %f' % (i, gl))
@@ -115,7 +117,7 @@ with tf.Session() as sess:
             saver.save(sess, '/Users/fan/Desktop/python/tensorflow/machine-learning-final-project/GAN/net_data/GAN/log.ckpt')
 
         if i % 10 == 0:
-            summary = sess.run(merged, feed_dict={z: g_batch, x: d_batch})
+            summary = sess.run(merged, feed_dict={G_input: g_batch, D_input: d_batch})
             writer.add_summary(summary, i)
 
     writer.close()
